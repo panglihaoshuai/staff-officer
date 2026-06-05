@@ -325,6 +325,76 @@ def detect_assistant_signals(text: str) -> list[tuple[str, str, str]]:
     return results
 
 
+def detect_emotion_detailed(text: str, previous_state: str = "neutral") -> dict:
+    """检测文本中的情绪信号，返回详细的检测结果。
+
+    返回结构：
+    {
+        "text": str,                    # 输入文本
+        "current_state": str,           # 当前状态
+        "previous_state": str,          # 前一状态
+        "changed": bool,                # 是否发生状态变化
+        "valence": float,               # 效价
+        "arousal": float,               # 唤醒度
+        "confidence": str,              # 最高置信度
+        "signals": list[dict],          # 检测到的信号
+        "matched_rules": list[str],     # 命中的规则
+        "explanation": str,             # 简短解释
+    }
+    """
+    signals = detect_signals(text)
+
+    # 确定最终状态
+    if signals:
+        # 取第一个信号（已按优先级排序）
+        _, target_state, confidence = signals[0]
+        current_state = target_state
+    else:
+        current_state = previous_state
+        confidence = "none"
+
+    # 检查是否发生状态变化
+    changed = current_state != previous_state
+
+    # 获取状态信息
+    state_info = EMOTION_STATES.get(current_state, EMOTION_STATES["neutral"])
+
+    # 构建信号列表
+    signal_list = []
+    for signal_name, target_state, conf in signals:
+        signal_list.append({
+            "signal": signal_name,
+            "target_state": target_state,
+            "confidence": conf,
+        })
+
+    # 构建命中的规则列表
+    matched_rules = [s[0] for s in signals]
+
+    # 生成解释
+    if not signals:
+        explanation = "未检测到明显情绪信号，保持当前状态。"
+    elif changed:
+        signal_names = "、".join(matched_rules)
+        explanation = f"检测到信号：{signal_names}，状态从 {previous_state} 变为 {current_state}。"
+    else:
+        signal_names = "、".join(matched_rules)
+        explanation = f"检测到信号：{signal_names}，但状态未变化。"
+
+    return {
+        "text": text,
+        "current_state": current_state,
+        "previous_state": previous_state,
+        "changed": changed,
+        "valence": state_info["valence"],
+        "arousal": state_info["arousal"],
+        "confidence": confidence,
+        "signals": signal_list,
+        "matched_rules": matched_rules,
+        "explanation": explanation,
+    }
+
+
 # ── 情绪价值输出指导 ─────────────────────────────────────────────────────
 
 EMOTION_GUIDANCE = {

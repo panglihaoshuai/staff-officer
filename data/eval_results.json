@@ -1,0 +1,135 @@
+{
+  "accuracy": 1.0,
+  "per_class": {
+    "anxious": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "frustrated": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "happy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 7
+    },
+    "hesitant": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "impulsive": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "invested": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "neutral": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 3
+    },
+    "tired": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    }
+  },
+  "confusion": {
+    "frustrated": {
+      "frustrated": 5,
+      "anxious": 0,
+      "happy": 0,
+      "hesitant": 0,
+      "impulsive": 0,
+      "invested": 0,
+      "neutral": 0,
+      "tired": 0
+    },
+    "happy": {
+      "happy": 7,
+      "anxious": 0,
+      "frustrated": 0,
+      "hesitant": 0,
+      "impulsive": 0,
+      "invested": 0,
+      "neutral": 0,
+      "tired": 0
+    },
+    "anxious": {
+      "anxious": 5,
+      "frustrated": 0,
+      "happy": 0,
+      "hesitant": 0,
+      "impulsive": 0,
+      "invested": 0,
+      "neutral": 0,
+      "tired": 0
+    },
+    "hesitant": {
+      "hesitant": 5,
+      "anxious": 0,
+      "frustrated": 0,
+      "happy": 0,
+      "impulsive": 0,
+      "invested": 0,
+      "neutral": 0,
+      "tired": 0
+    },
+    "tired": {
+      "tired": 5,
+      "anxious": 0,
+      "frustrated": 0,
+      "happy": 0,
+      "hesitant": 0,
+      "impulsive": 0,
+      "invested": 0,
+      "neutral": 0
+    },
+    "invested": {
+      "invested": 5,
+      "anxious": 0,
+      "frustrated": 0,
+      "happy": 0,
+      "hesitant": 0,
+      "impulsive": 0,
+      "neutral": 0,
+      "tired": 0
+    },
+    "impulsive": {
+      "impulsive": 5,
+      "anxious": 0,
+      "frustrated": 0,
+      "happy": 0,
+      "hesitant": 0,
+      "invested": 0,
+      "neutral": 0,
+      "tired": 0
+    },
+    "neutral": {
+      "neutral": 3,
+      "anxious": 0,
+      "frustrated": 0,
+      "happy": 0,
+      "hesitant": 0,
+      "impulsive": 0,
+      "invested": 0,
+      "tired": 0
+    }
+  }
+}

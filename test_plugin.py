@@ -123,6 +123,74 @@ def test_guidance():
     print()
     return True
 
+
+def test_negative_cases():
+    """测试反例：确保普通文本、负面文本不会被错误匹配为 happy/delight。"""
+    print("=== 反例测试（防止误判） ===")
+    
+    # 这些输入不应该被识别为 happy/delight
+    negative_cases = [
+        ("我今天很烦", "frustrated", "负面文本不应被识别为happy"),
+        ("普通一句话，没有明显情绪", "neutral", "中性文本不应被识别为happy"),
+        ("这个功能怎么还不能用", "frustrated", "质疑文本不应被识别为happy"),
+        ("我有点焦虑，不知道怎么办", "anxious", "焦虑文本不应被识别为happy"),
+        ("今天天气不好", "neutral", "负面描述不应被识别为happy"),
+        ("这个方案有问题", "frustrated", "问题指出不应被识别为happy"),
+        ("我担心会失败", "anxious", "担忧不应被识别为happy"),
+        ("太贵了买不起", "neutral", "价格抱怨不应被识别为happy"),
+        ("这个很难做", "neutral", "困难描述不应被识别为happy"),
+        ("我不确定这个对不对", "hesitant", "犹豫不应被识别为happy"),
+    ]
+    
+    passed = 0
+    for text, expected_not_state, reason in negative_cases:
+        signals = detect_signals(text)
+        sm = EmotionStateMachine()
+        for name, target, conf in signals:
+            sm.update(name, target, conf, text)
+        
+        # 检查是否被错误识别为 happy
+        is_happy = sm.state == "happy"
+        # 检查是否包含 delight 信号
+        has_delight = any(s[0] == "delight" for s in signals)
+        
+        if not is_happy and not has_delight:
+            passed += 1
+            status = "✅"
+        else:
+            status = "❌"
+        
+        print(f"  {status} \"{text[:20]}\" → {sm.state} (不应为happy) [{reason}]")
+        if is_happy or has_delight:
+            print(f"      误判信号: {signals}")
+    
+    # 额外测试：确保 happy 状态只在真正积极时触发
+    positive_cases = [
+        ("太好了搞定了", "happy", "真正的积极文本应该被识别为happy"),
+        ("哈哈成功了", "happy", "成功表达应该被识别为happy"),
+        ("漂亮！完美解决", "happy", "赞美应该被识别为happy"),
+    ]
+    
+    print("\n  正例验证（确保真正的happy能被识别）:")
+    for text, expected_state, reason in positive_cases:
+        signals = detect_signals(text)
+        sm = EmotionStateMachine()
+        for name, target, conf in signals:
+            sm.update(name, target, conf, text)
+        
+        if sm.state == expected_state:
+            passed += 1
+            status = "✅"
+        else:
+            status = "❌"
+        
+        print(f"    {status} \"{text[:20]}\" → {sm.state} (期望: {expected_state}) [{reason}]")
+    
+    total = len(negative_cases) + len(positive_cases)
+    print(f"\n反例测试：{passed}/{total} 通过\n")
+    return passed == total
+
+
 def test_multi_turn_simulation():
     """模拟多轮对话，验证状态机在长对话中的行为。"""
     print("=== 多轮对话模拟 ===")
@@ -353,6 +421,7 @@ def test_long_conversation():
 if __name__ == "__main__":
     results = []
     results.append(("规则引擎", test_rule_engine()))
+    results.append(("反例测试", test_negative_cases()))
     results.append(("状态机", test_state_machine()))
     results.append(("情绪指导", test_guidance()))
     results.append(("多轮模拟", test_multi_turn_simulation()))
