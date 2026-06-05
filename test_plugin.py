@@ -7,7 +7,7 @@ import os
 import json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from __init__ import EmotionStateMachine, detect_signals, EMOTION_STATES, SIGNAL_RULES
+from __init__ import EmotionStateMachine, detect_signals, detect_assistant_signals, EMOTION_STATES, SIGNAL_RULES
 
 def test_rule_engine():
     """测试规则引擎检测。"""
@@ -190,6 +190,166 @@ def test_signal_conflict_resolution():
     print(f"\n信号冲突解决：{passed}/{len(cases)} 通过\n")
     return passed == len(cases)
 
+
+def test_long_conversation():
+    """测试长对话（50+轮）中的状态机行为。"""
+    print("=== 长对话测试（50+轮） ===")
+    
+    sm = EmotionStateMachine()
+    
+    # 模拟50轮对话，包含各种情绪变化
+    conversation = [
+        # 开始：中性
+        ("帮我看看这个方案", None),
+        ("好的，我分析一下", None),
+        ("这个方案有什么问题吗", None),
+        
+        # 用户开始焦虑
+        ("会不会出问题", None),
+        ("万一失败了怎么办", None),
+        ("我有点担心", None),
+        
+        # assistant回复安慰
+        (None, "别担心，我来帮你分析"),
+        (None, "没问题的，我们一步步来"),
+        
+        # 用户继续焦虑
+        ("但是时间很紧", None),
+        ("来不及了怎么办", None),
+        
+        # 用户开始烦躁
+        ("算了不想弄了", None),
+        ("太麻烦了", None),
+        
+        # assistant回复理解
+        (None, "我理解你的感受"),
+        (None, "确实有点复杂"),
+        
+        # 用户冷静下来
+        ("好吧继续吧", None),
+        ("你说说怎么做", None),
+        
+        # 讨论技术细节（中性）
+        ("第一步是什么", None),
+        ("然后呢", None),
+        ("接着呢", None),
+        ("最后呢", None),
+        
+        # 用户投入
+        ("详细说说", None),
+        ("具体怎么做", None),
+        ("展开讲讲", None),
+        
+        # 用户高兴
+        ("太好了搞定了", None),
+        ("漂亮", None),
+        
+        # 用户犹豫
+        ("要不换一种方案", None),
+        ("你觉得呢", None),
+        ("我也不确定", None),
+        
+        # 用户冲动
+        ("全部删了一刀切", None),
+        ("就这样定了", None),
+        
+        # 用户疲惫
+        ("累了", None),
+        ("先到这里吧", None),
+        
+        # 继续对话（测试衰减）
+        ("嗯", None),
+        ("哦", None),
+        ("行吧", None),
+        
+        # 用户再次投入
+        ("继续说", None),
+        ("然后呢", None),
+        ("下一步呢", None),
+        
+        # 用户再次焦虑
+        ("怎么办出问题了", None),
+        ("搞不定了", None),
+        
+        # 用户再次烦躁
+        ("气死了", None),
+        ("受不了了", None),
+        
+        # 用户再次冷静
+        ("好吧继续", None),
+        ("你说", None),
+        
+        # 讨论细节
+        ("这个怎么做", None),
+        ("那个呢", None),
+        ("还有呢", None),
+        
+        # 用户再次高兴
+        ("搞定了", None),
+        ("成功了", None),
+        
+        # 用户再次犹豫
+        ("要不试试别的", None),
+        ("你觉得呢", None),
+        
+        # 用户再次冲动
+        ("不管了", None),
+        ("爱怎样怎样", None),
+        
+        # 用户再次疲惫
+        ("困了", None),
+        ("今天先到这", None),
+    ]
+    
+    # 执行对话
+    for i, (user_msg, assistant_msg) in enumerate(conversation, 1):
+        if user_msg:
+            user_signals = detect_signals(user_msg)
+            for name, target, conf in user_signals:
+                sm.update(name, target, conf, user_msg)
+        
+        if assistant_msg:
+            assistant_signals = detect_assistant_signals(assistant_msg)
+            for name, target, conf in assistant_signals:
+                sm.update(name, target, conf, assistant_msg)
+        
+        if not user_msg and not assistant_msg:
+            sm.turn_count += 1
+            sm.decay()
+        
+        # 每10轮打印一次状态
+        if i % 10 == 0:
+            print(f"  轮{i}: {sm.state} ({EMOTION_STATES[sm.state]['label']})")
+    
+    # 验证最终状态
+    final_state = sm.state
+    print(f"\n  最终状态: {final_state} ({EMOTION_STATES[final_state]['label']})")
+    print(f"  总轮次: {sm.turn_count}")
+    print(f"  信号数量: {len(sm.signals)}")
+    print(f"  状态变更次数: {len(sm.state_history)}")
+    
+    # 验证快照功能
+    snapshot = sm.snapshot()
+    sm2 = EmotionStateMachine()
+    sm2.restore(snapshot)
+    
+    assert sm2.state == sm.state, f"快照恢复失败：{sm2.state} vs {sm.state}"
+    assert sm2.turn_count == sm.turn_count, f"轮次恢复失败：{sm2.turn_count} vs {sm.turn_count}"
+    print("  ✅ 快照保存和恢复成功")
+    
+    # 验证长对话中的状态变化合理性
+    # 应该有多次状态变更
+    assert len(sm.state_history) >= 5, f"状态变更次数过少：{len(sm.state_history)}"
+    print(f"  ✅ 状态变更次数合理：{len(sm.state_history)}")
+    
+    # 验证信号保留
+    assert len(sm.signals) >= 10, f"信号保留过少：{len(sm.signals)}"
+    print(f"  ✅ 信号保留数量合理：{len(sm.signals)}")
+    
+    print(f"\n长对话测试通过 ✅\n")
+    return True
+
+
 if __name__ == "__main__":
     results = []
     results.append(("规则引擎", test_rule_engine()))
@@ -197,6 +357,7 @@ if __name__ == "__main__":
     results.append(("情绪指导", test_guidance()))
     results.append(("多轮模拟", test_multi_turn_simulation()))
     results.append(("信号冲突解决", test_signal_conflict_resolution()))
+    results.append(("长对话测试", test_long_conversation()))
     
     print("=" * 40)
     all_pass = all(r[1] for r in results)

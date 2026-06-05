@@ -101,6 +101,27 @@ SIGNAL_RULES: list[tuple[str, str, str, str]] = [
 ]
 
 
+# ── Assistant 消息信号规则 ─────────────────────────────────────────────────
+# 检测 assistant 回复中可能引发用户情绪的模式（否定、质疑、轻视等）
+# 这些信号作为辅助，置信度较低，不会直接触发状态转移
+
+ASSISTANT_SIGNAL_RULES: list[tuple[str, str, str, str]] = [
+    # 否定/质疑（可能让用户感到被否定）
+    (r"不对|错误|有[问误]题|不[正确行]",        "否定",     "frustrated", "low"),
+    (r"你确定|你确认|真的吗|是不是搞错了",       "质疑",     "anxious",    "low"),
+    (r"这[么样]简单|很容易|轻松搞定",           "轻视难度",  "frustrated", "low"),
+    (r"你[应该]知道|显而易见|不言而喻",         "假设已知",  "anxious",    "low"),
+
+    # 催促/打断（可能让用户感到被催促）
+    (r"快[点一]|抓紧|赶[紧时间]|别磨蹭",       "催促",     "frustrated", "low"),
+    (r"停[一下]|等[一等]|先别[继续]",          "打断",     "frustrated", "low"),
+
+    # 安慰/鼓励（可能缓解负面情绪）
+    (r"别担心|没事|没问题|放[心轻松]",          "安慰",     "happy",      "low"),
+    (r"很好|不错|做[得的]好|漂亮",             "鼓励",     "happy",      "low"),
+]
+
+
 # ── 情绪状态机 ───────────────────────────────────────────────────────────
 
 class EmotionStateMachine:
@@ -138,12 +159,23 @@ class EmotionStateMachine:
         if confidence == "high":
             self._transition(target_state)
         elif confidence == "medium":
-            # 如果最近 3 轮有 2+ 个相同目标信号，转移
-            recent_to_same = sum(
-                1 for s in self.signals[-3:]
-                if s["to"] == target_state
+            # 优化的累积逻辑：
+            # 1. 时间窗口扩大到5轮
+            # 2. 阈值提高到3+
+            # 3. 考虑情绪极性：相同极性的信号可以累积
+            target_polarity = EMOTION_STATES.get(target_state, {}).get("polarity", "neutral")
+
+            # 统计最近5轮中相同极性的信号数量
+            recent_same_polarity = sum(
+                1 for s in self.signals[-5:]
+                if EMOTION_STATES.get(s["to"], {}).get("polarity", "neutral") == target_polarity
             )
-            if recent_to_same >= 2:
+
+            # 如果有3+个相同极性信号，转移
+            if recent_same_polarity >= 3:
+                self._transition(target_state)
+            # 或者有2个完全相同的信号，也转移
+            elif sum(1 for s in self.signals[-5:] if s["to"] == target_state) >= 2:
                 self._transition(target_state)
         # low 置信度：只记录信号，不转移状态
 
@@ -166,13 +198,31 @@ class EmotionStateMachine:
             self.state_history = self.state_history[-50:]
 
     def decay(self) -> None:
-        """每轮结束时，如果最近 5 轮没有新信号，状态向 neutral 衰减。"""
+        """每轮结束时，如果最近 N 轮没有新信号，状态向 neutral 渐进衰减。
+
+        衰减策略：
+        - 3轮无信号：高唤醒状态（frustrated, impulsive）→ 中等唤醒状态（anxious, hesitant）
+        - 5轮无信号：任意状态 → neutral
+        """
         if not self.signals:
             return
         recent = self.signals[-1]
         age = self.turn_count - recent["turn"]
-        if age >= 3 and self.state != "neutral":
+
+        # 5轮无信号，直接衰减到neutral
+        if age >= 5 and self.state != "neutral":
             self._transition("neutral")
+            return
+
+        # 3轮无信号，高唤醒状态衰减到中等唤醒状态
+        if age >= 3 and self.state != "neutral":
+            high_arousal_states = ["frustrated", "impulsive"]
+            medium_arousal_states = {
+                "frustrated": "anxious",
+                "impulsive": "hesitant",
+            }
+            if self.state in high_arousal_states:
+                self._transition(medium_arousal_states[self.state])
 
     def snapshot(self) -> dict:
         """导出当前状态快照（用于持久化和压缩前保存）。"""
@@ -181,8 +231,8 @@ class EmotionStateMachine:
             "valence": self.valence,
             "arousal": self.arousal,
             "turn_count": self.turn_count,
-            "recent_signals": self.signals[-5:],
-            "state_history": self.state_history[-5:],
+            "recent_signals": self.signals[-20:],
+            "state_history": self.state_history[-20:],
             "created_at": self.created_at,
             "snapshot_at": time.time(),
         }
@@ -249,6 +299,29 @@ def detect_signals(text: str) -> list[tuple[str, str, str]]:
             return [results[0]]
 
     # 无真正冲突，返回所有信号（按优先级排序）
+    return results
+
+
+def detect_assistant_signals(text: str) -> list[tuple[str, str, str]]:
+    """用规则引擎检测 assistant 回复中的情绪信号（辅助信号）。
+
+    返回: [(signal_name, target_state, confidence), ...]
+    注意：这些信号置信度较低，作为辅助参考。
+    """
+    if not text or len(text.strip()) == 0:
+        return []
+
+    results = []
+    text_stripped = text.strip()
+
+    for pattern, signal_name, target_state, confidence in ASSISTANT_SIGNAL_RULES:
+        try:
+            if re.search(pattern, text_stripped, re.IGNORECASE):
+                results.append((signal_name, target_state, confidence))
+        except re.error:
+            continue
+
+    # assistant 信号都是 low 置信度，不需要冲突解决
     return results
 
 
@@ -365,10 +438,13 @@ class StaffOfficerProvider(MemoryProvider):
         for signal_name, target_state, confidence in user_signals:
             self._emotion.update(signal_name, target_state, confidence, user)
 
-        # 检测 assistant 回复中的反馈信号（用户可能在 assistant 回复中隐含情绪）
-        # 但主要关注用户消息，assistant 消息只做辅助
-        if not user_signals:
-            # 没有检测到信号，执行衰减
+        # 检测 assistant 回复中的反馈信号（辅助信号，低置信度）
+        assistant_signals = detect_assistant_signals(assistant)
+        for signal_name, target_state, confidence in assistant_signals:
+            self._emotion.update(signal_name, target_state, confidence, assistant)
+
+        # 如果没有检测到任何信号，执行衰减
+        if not user_signals and not assistant_signals:
             self._emotion.decay()
 
         # 每 5 轮保存一次情绪模式到 memory（通过 on_memory_write 机制）
