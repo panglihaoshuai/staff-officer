@@ -42,9 +42,9 @@ def test_rule_engine():
         # 疲惫/兴趣下降
         ("先到这里吧累了", ["fatigue"], "tired"),
         ("今天先到这", ["fatigue"], "tired"),
-        ("嗯", ["minimal_response"], "neutral"),  # low, 不转移
-        ("哦", ["minimal_response"], "neutral"),  # low, 不转移
-        ("行吧", ["minimal_response"], "neutral"),  # low, 不转移
+        ("嗯", ["minimal_response", "ultra_brief"], "neutral"),  # low, 不转移
+        ("哦", ["minimal_response", "ultra_brief"], "neutral"),  # low, 不转移
+        ("行吧", ["approval", "minimal_response", "ultra_brief"], "neutral"),  # low/medium, 不转移
         
         # 投入/认真
         ("详细说说怎么做的", ["deep_dive"], "invested"),
@@ -54,7 +54,7 @@ def test_rule_engine():
         # 冲动决策
         ("全部删了一刀切", ["impulse_decision"], "impulsive"),
         ("就这样定了", ["impulse_decision"], "impulsive"),
-        ("不管了", ["resignation"], "neutral"),  # medium, 单次不转移
+        ("不管了", ["resignation", "ultra_brief"], "neutral"),  # medium, 单次不转移
         ("别废话直接搞", ["command_urgent"], "neutral"),  # medium, 单次不转移
         
         # 超短消息
@@ -77,9 +77,9 @@ def test_rule_engine():
         signals = detect_signals(text)
         signal_names = [s[0] for s in signals]
         
-        # 检查信号是否匹配
+        # 检查信号是否精确匹配（排序后比较，防止漏报或多报）
         if expected_signals:
-            signal_match = all(s in signal_names for s in expected_signals)
+            signal_match = sorted(signal_names) == sorted(expected_signals)
         else:
             signal_match = len(signals) == 0
         
