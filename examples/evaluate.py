@@ -94,9 +94,13 @@ def print_confusion_matrix(confusion: dict, labels: list[str]):
 
 def main():
     """主函数。"""
-    # 数据集路径
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-    dataset_path = os.path.join(data_dir, "sample_eval.jsonl")
+    # 检查命令行参数
+    if len(sys.argv) > 1:
+        dataset_path = sys.argv[1]
+    else:
+        # 默认数据集路径
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+        dataset_path = os.path.join(data_dir, "sample_eval.jsonl")
 
     if not os.path.exists(dataset_path):
         print(f"错误：数据集文件不存在：{dataset_path}")
@@ -162,7 +166,8 @@ def main():
             print()
 
     # 保存结果
-    output_path = os.path.join(data_dir, "eval_results.json")
+    output_dir = os.path.dirname(dataset_path)
+    output_path = os.path.join(output_dir, "eval_results.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     print(f"\n详细结果已保存到：{output_path}")

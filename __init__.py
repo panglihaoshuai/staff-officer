@@ -20,6 +20,34 @@ import re
 import time
 from typing import Any
 
+
+def _validate_regex_rules():
+    """启动时验证所有正则规则：不匹配空字符串，无空分支。"""
+    # 延迟导入，避免循环依赖
+    rules = []
+    try:
+        rules.extend(SIGNAL_RULES)
+    except NameError:
+        pass
+    try:
+        rules.extend(ASSISTANT_SIGNAL_RULES)
+    except NameError:
+        pass
+
+    for pattern, signal_name, target_state, confidence in rules:
+        # 检查空分支
+        if '||' in pattern:
+            raise ValueError(f"Rule '{signal_name}' contains empty branch (||): {pattern}")
+        # 检查首尾 |
+        if pattern.startswith('|') or pattern.endswith('|'):
+            raise ValueError(f"Rule '{signal_name}' starts or ends with |: {pattern}")
+        # 检查是否匹配空字符串
+        try:
+            if re.search(pattern, '', re.IGNORECASE):
+                raise ValueError(f"Rule '{signal_name}' matches empty string: {pattern}")
+        except re.error as e:
+            raise ValueError(f"Rule '{signal_name}' has invalid regex: {pattern}, error: {e}")
+
 # ── Hermes Plugin Interface ──────────────────────────────────────────────
 try:
     from agent.memory_provider import MemoryProvider
@@ -79,7 +107,7 @@ SIGNAL_RULES: list[tuple[str, str, str, str]] = [
     # 焦虑/不确定
     (r"怎么办|不知道[怎咋]|搞不定|失败了",   "distress",           "anxious",    "high"),
     (r"会不会|万一|如果.*怎么办",            "worried",            "anxious",    "medium"),
-    (r"急|赶[紧时间]|来不及|快[点要]",       "urgency",            "anxious",    "medium"),
+    (r"急|赶紧|赶时间|来不及|快[点要]",       "urgency",            "anxious",    "medium"),
 
     # 犹豫/纠结
     (r"要不|可能|你觉得呢|我也不确定",       "hesitation",         "hesitant",   "medium"),
@@ -113,13 +141,17 @@ ASSISTANT_SIGNAL_RULES: list[tuple[str, str, str, str]] = [
     (r"你[应该]知道|显而易见|不言而喻",         "假设已知",  "anxious",    "low"),
 
     # 催促/打断（可能让用户感到被催促）
-    (r"快[点一]|抓紧|赶[紧时间]|别磨蹭",       "催促",     "frustrated", "low"),
+    (r"快[点一]|抓紧|赶紧|赶时间|别磨蹭",       "催促",     "frustrated", "low"),
     (r"停[一下]|等[一等]|先别[继续]",          "打断",     "frustrated", "low"),
 
     # 安慰/鼓励（可能缓解负面情绪）
     (r"别担心|没事|没问题|放[心轻松]",          "安慰",     "happy",      "low"),
     (r"很好|不错|做[得的]好|漂亮",             "鼓励",     "happy",      "low"),
 ]
+
+
+# 启动时验证所有规则
+_validate_regex_rules()
 
 
 # ── 情绪状态机 ───────────────────────────────────────────────────────────

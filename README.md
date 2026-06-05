@@ -90,6 +90,22 @@ staff-officer 是一个轻量级、可解释的情绪状态追踪插件，用于
 (r"搞定了|完成了|解决了|成功|过了", "achievement", "happy", "high")
 ```
 
+## 项目结构
+
+```
+staff-officer/
+├── __init__.py              # 主插件代码（状态机、规则引擎、Hooks）
+├── test_plugin.py           # 单元测试脚本
+├── plugin.yaml              # 插件元数据（版本、hooks）
+├── README.md                # 本文档
+├── examples/
+│   ├── demo.py              # 交互式演示脚本
+│   └── evaluate.py          # 评估脚本（输出 Accuracy/Precision/Recall/F1）
+└── data/
+    ├── sample_eval.jsonl    # 评估数据集（40 条标注样本）
+    └── eval_results.json    # 评估结果（由 evaluate.py 生成）
+```
+
 ## 安装方式
 
 ### 前置条件
@@ -184,6 +200,8 @@ python3 examples/evaluate.py
 
 评估使用 `data/sample_eval.jsonl`，包含 40 条标注样本，覆盖 8 种情绪状态。
 
+**注意**：这是一个小样本 smoke evaluation，仅用于验证评估脚本和规则引擎的基本功能，不代表真实场景下的情绪识别准确率。如需更准确的评估，需要更大规模的独立标注数据集。
+
 每行格式：
 ```json
 {"text": "算了不想弄了", "label": "frustrated"}
@@ -204,20 +222,22 @@ python3 examples/evaluate.py
 评估结果
 ============================================================
 
-总体准确率 (Accuracy): 85.00%
+总体准确率 (Accuracy): 100.00%
 
 各类别指标:
 类别            Precision    Recall       F1-score     Support
 ------------------------------------------------------------
-neutral         100.00%      80.00%       88.89%       5
-happy           100.00%      100.00%      100.00%      5
-frustrated      100.00%      100.00%      100.00%      5
 anxious         100.00%      100.00%      100.00%      5
+frustrated      100.00%      100.00%      100.00%      5
+happy           100.00%      100.00%      100.00%      7
 hesitant        100.00%      100.00%      100.00%      5
-tired           100.00%      60.00%       75.00%       5
-invested        66.67%       80.00%       72.73%       5
 impulsive       100.00%      100.00%      100.00%      5
+invested        100.00%      100.00%      100.00%      5
+neutral         100.00%      100.00%      100.00%      3
+tired           100.00%      100.00%      100.00%      5
 ```
+
+**注意**：以上结果基于 40 条小样本 smoke evaluation，不代表真实场景下的情绪识别准确率。
 
 ## 示例输出
 
