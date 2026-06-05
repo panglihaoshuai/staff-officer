@@ -1,0 +1,11 @@
+name: staff-officer
+version: 0.1.0
+description: "参谋助手论情绪追踪插件——基于规则引擎的用户情绪状态机，配合 ai-staff-officer skill 使用。"
+author: "songshiyao"
+homepage: ""
+hooks:
+  - prefetch
+  - sync_turn
+  - system_prompt_block
+  - on_pre_compress
+  - on_memory_write
